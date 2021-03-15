@@ -1,10 +1,11 @@
 const API = 'http://localhost:3000'
+const WS_API = 'ws://localhost:3000'
 
 const populateProducts = async (category, method = 'GET', payload) => {
     const products = document.querySelector('#products')
     products.innerHTML = ''
     const send = method === 'GET' ? {} : {
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     }
     const res = await fetch(`${API}/${category}`, { method, ...send })
@@ -12,6 +13,8 @@ const populateProducts = async (category, method = 'GET', payload) => {
 
     for (const product of data) {
         const item = document.createElement('product-item')
+        item.dataset.id = product.id
+
         for (const key of ['name', 'rrp', 'info']) {
             const span = document.createElement('span')
             span.slot = key
@@ -25,9 +28,30 @@ const populateProducts = async (category, method = 'GET', payload) => {
 const category = document.querySelector('#category')
 const add = document.querySelector('#add')
 
+let socket = null
+const realtimeOrders = (category) => {
+    if (socket) socket.close()
+    socket = new WebSocket(`${WS_API}/orders/${category}`)
+    socket.addEventListener('message', ({ data }) => {
+        try {
+            const { id, total } = JSON.parse(data)
+            const item = document.querySelector(`[data-id="${id}"]`)
+            if (item === null) return
+            const span = item.querySelector('[slot="orders"]') ||
+                document.createElement('span')
+            span.slot = 'orders'
+            span.textContent = total
+            item.appendChild(span)
+        } catch (err) {
+            console.error(err)
+        }
+    })
+}
+
 category.addEventListener('input', async ({ target }) => {
     add.style.display = 'block'
     await populateProducts(target.value)
+    realtimeOrders(target.value)
 })
 
 add.addEventListener('submit', async (e) => {
@@ -40,6 +64,8 @@ add.addEventListener('submit', async (e) => {
     }
 
     await populateProducts(category.value, 'POST', payload)
+    realtimeOrders(category.value)
+
     target.reset()
 })
 
