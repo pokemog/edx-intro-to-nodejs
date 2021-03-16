@@ -30,15 +30,15 @@ function addOrder(id, amount) {
         throw err
     }
 
-    if (Number.isInteger(amount) === false ) {
-        const err =Error(`Supplied amount must be an integer`)
+    if (Number.isInteger(amount) === false) {
+        const err = Error(`Supplied amount must be an integer`)
         err.status = 400
         throw err
     }
 
     orders[id].total += amount
     const { total } = orders[id]
-    orderStream.write({id, total })
+    orderStream.write({ id, total })
 }
 
 function* currentOrders(category) {
