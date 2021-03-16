@@ -1,7 +1,7 @@
 'use strict'
 
 module.exports = async function (fastify, opts) {
-    function monitorMessages (socket) {
+    function monitorMessages(socket) {
         socket.on('message', (data) => {
             try {
                 const { cmd, payload } = JSON.parse(data)
@@ -9,11 +9,7 @@ module.exports = async function (fastify, opts) {
                     sendCurrentOrders(payload.category, socket)
                 }
             } catch (err) {
-                fastify.log.warn(
-                    'WebSocket Message (data: %o) Error: %s',
-                    data,
-                    err.message
-                )
+                fastify.log.warn('WebSocket Message (data: %o) Error: %s', data, err.message)
             }
         })
     }
@@ -24,17 +20,21 @@ module.exports = async function (fastify, opts) {
         }
     }
 
-    fastify.get(
-        '/:category',
-        { websocket: true },
-        async ({ socket }, request) => {
-            monitorMessages(socket)
-            sendCurrentOrders(request.params.category, socket)
-            
-            for await (const order of fastify.realtimeOrders()) {
-                if (socket.readState >= socket.CLOSING) break
-                socket.send(order)
-            }
+    fastify.get('/:category', { websocket: true }, async ({ socket }, request) => {
+        monitorMessages(socket)
+        sendCurrentOrders(request.params.category, socket)
+
+        for await (const order of fastify.realtimeOrders()) {
+            if (socket.readState >= socket.CLOSING) break
+            socket.send(order)
         }
+    }
     )
+
+    fastify.post('/:id', async (request) => {
+        const { id } = request.params
+        fastify.addOrder(id, request.body.amount)
+
+        return { ok: true }
+    })
 }
